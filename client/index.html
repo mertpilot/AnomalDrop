@@ -1,233 +1,432 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <!-- Web App Config -->
-    <title>Snapdrop</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#3367d6">
-    <meta name="color-scheme" content="dark light">
-    <meta name="apple-mobile-web-app-capable" content="no">
-    <meta name="apple-mobile-web-app-title" content="Snapdrop">
-    <!-- Descriptions -->
-    <meta name="description" content="Instantly share images, videos, PDFs, and links with people nearby. Peer2Peer and Open Source. No Setup, No Signup.">
-    <meta name="keywords" content="File, Transfer, Share, Peer2Peer">
-    <meta name="author" content="RobinLinus">
-    <meta property="og:title" content="Snapdrop">
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="https://snapdrop.net/">
-    <meta property="og:author" content="https://facebook.com/RobinLinus">
-    <meta name="twitter:author" content="@RobinLinus">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:description" content="Instantly share images, videos, PDFs, and links with people nearby. Peer2Peer and Open Source. No Setup, No Signup.">
-    <meta name="og:description" content="Instantly share images, videos, PDFs, and links with people nearby. Peer2Peer and Open Source. No Setup, No Signup.">
-    <!-- Icons -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AnomalDrop</title>
+    
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AnomalDrop">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+
     <link rel="icon" sizes="96x96" href="images/favicon-96x96.png">
-    <link rel="shortcut icon" href="images/favicon-96x96.png">
-    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    <meta name="msapplication-TileImage" content="images/mstile-150x150.png">
-    <link rel="fluid-icon" type="image/png" href="images/android-chrome-192x192.png">
-    <meta name="twitter:image" content="https://snapdrop.net/images/twitter-stream.jpg">
-    <meta property="og:image" content="https://snapdrop.net/images/twitter-stream.jpg">
-    <!-- Resources -->
-    <link rel="stylesheet" type="text/css" href="styles.css">
     <link rel="manifest" href="manifest.json">
+
+    <style>
+        /* --- ANOMAL PRO DESIGN SYSTEM (FINAL v7) --- */
+        :root {
+            --bg-body: #000000;
+            --accent: #ff2d55;
+            --accent-glow: #ff0044;
+            --accent-dark: #520012;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* --- RED LAVA ATMOSPHERE --- */
+        .lava-background {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; background: #000; overflow: hidden; pointer-events: none;
+        }
+
+        .lava-orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            opacity: 0.5; animation: floatLava 15s infinite ease-in-out alternate;
+        }
+
+        .orb-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: var(--accent); animation-duration: 20s; }
+        .orb-2 { bottom: -10%; right: -10%; width: 70vw; height: 70vw; background: var(--accent-glow); opacity: 0.3; animation-duration: 25s; animation-direction: alternate-reverse; }
+        .orb-3 { top: 40%; left: 30%; width: 50vw; height: 50vw; background: var(--accent-dark); opacity: 0.6; animation-duration: 30s; }
+
+        @keyframes floatLava {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, -20px) scale(1.05); }
+            100% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+
+        /* HEADER */
+        header {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;
+            z-index: 50; height: 70px;
+        }
+
+        .brand-mark {
+            font-weight: 800; font-size: 16px; letter-spacing: -0.5px;
+            color: #fff; text-shadow: 0 0 20px rgba(255, 45, 85, 0.6);
+        }
+        .brand-mark span { color: var(--accent); }
+
+        .header-controls { display: flex; align-items: center; gap: 12px; }
+
+        .icon-button {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s var(--ease-apple);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .icon-button:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+        .icon { width: 20px; height: 20px; fill: #fff; }
+
+        #send-all-btn { display: none; background: rgba(255, 45, 85, 0.2); border-color: rgba(255, 45, 85, 0.4); }
+        #send-all-btn:hover { background: var(--accent); border-color: var(--accent); }
+        #send-all-btn svg { fill: #fff; }
+
+        /* RADAR AREA */
+        x-peers {
+            flex-grow: 1; width: 100%; height: 100%;
+            display: flex; flex-direction: row; flex-wrap: wrap;     
+            justify-content: center; align-content: center; align-items: center;
+            gap: 24px; padding: 80px 20px 60px 20px; 
+            z-index: 10; overflow-y: auto;
+        }
+
+        x-peer {
+            width: 110px; height: 140px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            cursor: pointer; transition: transform 0.3s var(--ease-apple);
+            position: relative;
+        }
+        x-peer:active { transform: scale(0.95); opacity: 0.8; }
+
+        x-peer .device-icon {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            transition: all 0.3s var(--ease-apple);
+            position: relative; overflow: hidden;
+        }
+
+        /* --- RED FILL EFFECT (Lava Progress) --- */
+        x-peer .progress {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+            background: linear-gradient(to top, var(--accent), var(--accent-glow));
+            opacity: 0.8; transition: height 0.2s linear; z-index: 1;
+            mix-blend-mode: overlay;
+        }
+        
+        /* Orijinal SVG progress'i gizliyoruz */
+        x-peer circle { display: none; } 
+        x-peer svg.progress-ring { display: none; }
+
+        x-peer:hover .device-icon {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px rgba(255, 45, 85, 0.5);
+            transform: translateY(-5px);
+        }
+
+        x-peer .name {
+            margin-top: 12px; font-size: 13px; font-weight: 600;
+            color: var(--text-primary); text-align: center;
+            width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2;
+        }
+        x-peer .status { font-size: 11px; color: var(--text-secondary); margin-top: 2px; height: 14px; z-index: 2; }
+
+        /* EMPTY STATE */
+        x-no-peers {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center;
+            pointer-events: none; z-index: 20;
+        }
+        x-no-peers h2 { font-weight: 700; font-size: 22px; margin: 0 0 8px 0; color: #fff; }
+        x-no-peers p { color: var(--text-secondary); font-size: 15px; }
+
+        x-instructions {
+            position: absolute; bottom: 40px; color: var(--text-secondary);
+            font-size: 12px; font-weight: 500; opacity: 0.5; text-align: center; width: 100%; pointer-events: none;
+        }
+
+        /* DIALOGS */
+        x-dialog {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 200; display: none;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(20px);
+            align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        x-dialog[show] { display: flex; opacity: 1; }
+
+        x-paper {
+            background: #151515; width: 340px; border-radius: 28px; padding: 30px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center; transform: scale(0.95); transition: transform 0.3s;
+        }
+        x-dialog[show] x-paper { transform: scale(1); }
+
+        h3 { margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #fff; }
+        .file-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
+        .file-highlight { color: #fff; font-weight: 600; }
+
+        .btn-group { display: flex; gap: 12px; margin-top: 15px; }
+        
+        .button {
+            flex: 1; padding: 14px 0; border-radius: 14px; font-size: 14px; font-weight: 600;
+            border: none; cursor: pointer; transition: all 0.2s; color: #fff; text-decoration: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-secondary { background: rgba(255,255,255,0.1); }
+        
+        /* GÜVENLİK KİLİDİ (SAFE MODE) - CSS TABANLI */
+        @keyframes safety-unlock {
+            0% { opacity: 0.5; pointer-events: none; cursor: wait; }
+            99% { opacity: 0.5; pointer-events: none; cursor: wait; }
+            100% { opacity: 1; pointer-events: auto; cursor: pointer; }
+        }
+
+        /* Dialog açıldığında buton 1.5 saniye kilitlenir */
+        x-dialog[show] #download {
+            animation: safety-unlock 1.5s linear forwards;
+        }
+
+        .input-field { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; color: #fff; font-size: 15px; outline: none; margin-bottom: 24px; }
+        
+        x-about {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(30px); z-index: 300;
+            display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }
+        .name-input { margin-top: 20px; background: transparent; border: none; border-bottom: 2px solid var(--accent); color: #fff; font-size: 20px; text-align: center; width: 80%; padding: 10px; outline: none; }
+        
+        .toast-container { position: fixed; bottom: 80px; width: 100%; display:flex; justify-content: center; pointer-events: none; z-index: 300; }
+        x-toast {
+            background: #fff; color: #000; padding: 12px 28px; border-radius: 30px;
+            font-size: 14px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transform: translateY(20px); opacity: 0; transition: 0.4s;
+        }
+        x-toast[show] { transform: translateY(0); opacity: 1; }
+        
+        .close-about { margin-top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    </style>
 </head>
 
-<body translate="no">
-    <header class="row-reverse">
-        <a href="#about" class="icon-button" title="About Snapdrop">
-            <svg class="icon">
-                <use xlink:href="#info-outline" />
-            </svg>
-        </a>
-        <a href="#" id="notification" class="icon-button" title="Enable Notifications" hidden>
-            <svg class="icon">
-                <use xlink:href="#notifications" />
-            </svg>
-        </a>
-        <a href="#" id="install" class="icon-button" title="Install Snapdrop" hidden>
-            <svg class="icon">
-                <use xlink:href="#homescreen" />
-            </svg>
-        </a>
+<body>
+    <input type="file" id="batch-file-input" style="display: none;" multiple>
+
+    <div class="lava-background">
+        <div class="lava-orb orb-1"></div>
+        <div class="lava-orb orb-2"></div>
+        <div class="lava-orb orb-3"></div>
+    </div>
+
+    <header>
+        <div class="brand-mark">Anomal<span>Drop</span></div>
+        <div class="header-controls">
+            <div id="send-all-btn" class="icon-button" onclick="openBatchPicker()" title="Toplu Gönder">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            </div>
+            <div class="icon-button" onclick="toggleAbout(true)">
+                <svg class="icon"><use xlink:href="#info-outline" /></svg>
+            </div>
+        </div>
     </header>
-    <!-- Peers -->
-    <x-peers class="center"></x-peers>
+    
+    <x-peers>
+        </x-peers>
+    
     <x-no-peers>
-        <h2>Open Snapdrop on other devices to send files</h2>
+        <h2>Radar Aktif</h2>
+        <p>Ağ taranıyor...</p>
     </x-no-peers>
-    <x-instructions desktop="Click to send files or right click to send a message" mobile="Tap to send files or long tap to send a message"></x-instructions>
-    <!-- Footer -->
-    <footer class="column">
-        <svg class="icon logo">
-            <use xlink:href="#wifi-tethering" />
-        </svg>
-        <div id="displayName" placeholder="The easiest way to transfer data across devices"></div>
-        <div class="font-body2">You can be discovered by everyone on this network</div>
-    </footer>
-    <!-- Receive Dialog -->
+    
+    <x-instructions desktop="Dosya için tıkla • Mesaj için sağ tıkla" mobile="Dosya için dokun • Mesaj için basılı tut"></x-instructions>
+
     <x-dialog id="receiveDialog">
-        <x-background class="full center">
-            <x-paper shadow="2">
-                <h3>File Received</h3>
-                <div class="font-subheading" id="fileName">Filename</div>
-                <div class="font-body2" id="fileSize"></div>
-                <div class='preview' style="visibility: hidden;">
-                    <img id='img-preview' src="">
-                </div>
-                <div class="row">
-                    <label for="autoDownload" class="grow">Ask to save each file before downloading</label>
-                    <input type="checkbox" id="autoDownload" checked="">
-                </div>
-                <div class="row-reverse">
-                    <a class="button" close id="download" title="Download File" autofocus>Save</a>
-                    <button class="button" close>Ignore</button>
+        <x-paper>
+            <h3>Dosya Alındı</h3>
+            <div class="file-info">
+                <span id="fileName" class="file-highlight">Dosya</span><br>
+                <span id="fileSize">Boyut</span>
+            </div>
+            <div class='preview' style="visibility: hidden; margin-bottom:20px; border-radius:12px; overflow:hidden; max-height:150px;">
+                <img id='img-preview' src="" style="width:100%; object-fit: cover;">
+            </div>
+            <div class="btn-group">
+                <button class="button btn-secondary" close>Reddet</button>
+                <a class="button btn-primary" close id="download">Kabul Et</a>
+            </div>
+        </x-paper>
+    </x-dialog>
+
+    <x-dialog id="sendTextDialog">
+        <form action="#" style="width:100%">
+            <x-paper>
+                <h3>Mesaj Gönder</h3>
+                <div id="textInput" class="input-field" role="textbox" placeholder="Mesajınızı yazın..." autocomplete="off" autofocus contenteditable></div>
+                <div class="btn-group">
+                    <a class="button btn-secondary" close>İptal</a>
+                    <button class="button btn-primary" type="submit" close>Gönder</button>
                 </div>
             </x-paper>
-        </x-background>
-    </x-dialog>
-    <!-- Send Text Dialog -->
-    <x-dialog id="sendTextDialog">
-        <form action="#">
-            <x-background class="full center">
-                <x-paper shadow="2">
-                    <h3>Send a Message</h3>
-                    <div id="textInput" class="textarea" role="textbox" placeholder="Send a message" autocomplete="off" autofocus contenteditable></div>
-                    <div class="row-reverse">
-                        <button class="button" type="submit" close>Send</button>
-                        <a class="button" close>Cancel</a>
-                    </div>
-                </x-paper>
-            </x-background>
         </form>
     </x-dialog>
-    <!-- Receive Text Dialog -->
+
     <x-dialog id="receiveTextDialog">
-        <x-background class="full center">
-            <x-paper shadow="2">
-                <h3>Message Received</h3>
-                <div class="font-subheading" id="text"></div>
-                <div class="row-reverse">
-                    <button class="button" id="copy" close autofocus>Copy</button>
-                    <button class="button" close>Close</button>
-                </div>
-            </x-paper>
-        </x-background>
-    </x-dialog>
-    <!-- Toast -->
-    <div class="toast-container full center">
-        <x-toast class="row" shadow="1" id="toast">File Transfer Completed</x-toast>
-    </div>
-    <!-- About Page -->
-    <x-about id="about" class="full center column">
-        <section class="center column fade-in">
-            <header class="row-reverse">
-                <a href="#" class="close icon-button">
-                    <svg class="icon">
-                        <use xlink:href="#close" />
-                    </svg>
-                </a>
-            </header>
-            <svg class="icon logo">
-                <use xlink:href="#wifi-tethering" />
-            </svg>
-            <h1>Snapdrop</h1>
-            <div class="font-subheading">The easiest way to transfer files across devices</div>
-            <div class="row">
-                <a class="icon-button" target="_blank" href="https://github.com/RobinLinus/snapdrop" title="Snapdrop on Github" rel="noreferrer">
-                    <svg class="icon">
-                        <use xlink:href="#github" />
-                    </svg>
-                </a>
-                <a class="icon-button" target="_blank" href="https://www.paypal.com/donate?hosted_button_id=FTP9DXUR7LA7Q" title="Help cover the server costs!" rel="noreferrer">
-                    <svg class="icon">
-                        <use xlink:href="#monetarization" />
-                    </svg>
-                </a>
-                <a class="icon-button" target="_blank" href="https://twitter.com/intent/tweet?text=https://snapdrop.net%20by%20@robin_linus%20&" title="Tweet about Snapdrop" rel="noreferrer">
-                    <svg class="icon">
-                        <use xlink:href="#twitter" />
-                    </svg>
-                </a>
-                <a class="icon-button" target="_blank" href="https://github.com/RobinLinus/snapdrop/blob/master/docs/faq.md" title="Frequently asked questions" rel="noreferrer">
-                    <svg class="icon">
-                        <use xlink:href="#help-outline" />
-                    </svg>
-                </a>
+        <x-paper>
+            <h3>Mesaj</h3>
+            <div id="text" class="input-field" style="background:transparent; border:none; padding:0; margin:10px 0 30px 0; text-align:center;"></div>
+            <div class="btn-group">
+                <button class="button btn-secondary" close>Kapat</button>
+                <button class="button btn-primary" id="copy" close>Kopyala</button>
             </div>
-        </section>
-        <x-background></x-background>
+        </x-paper>
+    </x-dialog>
+
+    <div class="toast-container">
+        <x-toast id="toast">İşlem Tamamlandı</x-toast>
+    </div>
+
+    <x-about id="about">
+        <div onclick="event.stopPropagation()">
+            <h1 style="color: #fff;">Anomal<span style="color:var(--accent)">Drop</span></h1>
+            <p style="margin-bottom: 20px; opacity: 0.7;">Hard Aesthetic File Transfer</p>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="displayName" class="name-input" placeholder="Görünen İsim" autocomplete="off" maxlength="20">
+                <p style="font-size: 11px; opacity: 0.4; margin-top:8px;">Değişiklik için sayfayı yenile.</p>
+            </div>
+            <p style="font-size: 12px; opacity: 0.3;">Engineered by Anomal House</p>
+            <div class="close-about" onclick="toggleAbout(false); saveName();">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#fff"/></svg>
+            </div>
+        </div>
     </x-about>
-    <!-- SVG Icon Library -->
+
     <svg style="display: none;">
-        <symbol id=wifi-tethering viewBox="0 0 24 24">
-            <path d="M12 11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 2c0-3.31-2.69-6-6-6s-6 2.69-6 6c0 2.22 1.21 4.15 3 5.19l1-1.74c-1.19-.7-2-1.97-2-3.45 0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.48-.81 2.75-2 3.45l1 1.74c1.79-1.04 3-2.97 3-5.19zM12 3C6.48 3 2 7.48 2 13c0 3.7 2.01 6.92 4.99 8.65l1-1.73C5.61 18.53 4 15.96 4 13c0-4.42 3.58-8 8-8s8 3.58 8 8c0 2.96-1.61 5.53-4 6.92l1 1.73c2.99-1.73 5-4.95 5-8.65 0-5.52-4.48-10-10-10z"></path>
-        </symbol>
-        <symbol id=desktop-mac viewBox="0 0 24 24">
-            <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"></path>
-        </symbol>
-        <symbol id=phone-iphone viewBox="0 0 24 24">
-            <path d="M15.5 1h-8C6.12 1 5 2.12 5 3.5v17C5 21.88 6.12 23 7.5 23h8c1.38 0 2.5-1.12 2.5-2.5v-17C18 2.12 16.88 1 15.5 1zm-4 21c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5-4H7V4h9v14z"></path>
-        </symbol>
-        <symbol id=tablet-mac viewBox="0 0 24 24">
-            <path d="M18.5 0h-14C3.12 0 2 1.12 2 2.5v19C2 22.88 3.12 24 4.5 24h14c1.38 0 2.5-1.12 2.5-2.5v-19C21 1.12 19.88 0 18.5 0zm-7 23c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm7.5-4H4V3h15v16z"></path>
-        </symbol>
-        <symbol id=info-outline viewBox="0 0 24 24">
-            <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path>
-        </symbol>
-        <symbol id=close viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
-        </symbol>
-        <symbol id=help-outline viewBox="0 0 24 24">
-            <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"></path>
-        </symbol>
-        <symbol id="twitter">
-            <path d="M23.954 4.569c-.885.389-1.83.654-2.825.775 1.014-.611 1.794-1.574 2.163-2.723-.951.555-2.005.959-3.127 1.184-.896-.959-2.173-1.559-3.591-1.559-2.717 0-4.92 2.203-4.92 4.917 0 .39.045.765.127 1.124C7.691 8.094 4.066 6.13 1.64 3.161c-.427.722-.666 1.561-.666 2.475 0 1.71.87 3.213 2.188 4.096-.807-.026-1.566-.248-2.228-.616v.061c0 2.385 1.693 4.374 3.946 4.827-.413.111-.849.171-1.296.171-.314 0-.615-.03-.916-.086.631 1.953 2.445 3.377 4.604 3.417-1.68 1.319-3.809 2.105-6.102 2.105-.39 0-.779-.023-1.17-.067 2.189 1.394 4.768 2.209 7.557 2.209 9.054 0 13.999-7.496 13.999-13.986 0-.209 0-.42-.015-.63.961-.689 1.8-1.56 2.46-2.548l-.047-.02z" />
-        </symbol>
-        <symbol id="github">
-            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-        </symbol>
-        <g id="notifications">
-            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
-        </g>
-        <symbol id="homescreen">
-            <path fill="none" d="M0 0h24v24H0V0z" />
-            <path d="M18 1.01L8 1c-1.1 0-2 .9-2 2v3h2V5h10v14H8v-1H6v3c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM10 15h2V8H5v2h3.59L3 15.59 4.41 17 10 11.41z" />
-            <path fill="none" d="M0 0h24v24H0V0z" />
-        </symbol>
-        <symbol id="monetarization">
-            <path d="M0 0h24v24H0z" fill="none" />
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" />
-        </symbol>
+        <symbol id=info-outline viewBox="0 0 24 24"><path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path></symbol>
+        <symbol id=close viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></symbol>
+        <symbol id=wifi-tethering viewBox="0 0 24 24"><path d="M12 11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 2c0-3.31-2.69-6-6-6s-6 2.69-6 6c0 2.22 1.21 4.15 3 5.19l1-1.74c-1.19-.7-2-1.97-2-3.45 0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.48-.81 2.75-2 3.45l1 1.74c1.79-1.04 3-2.97 3-5.19zM12 3C6.48 3 2 7.48 2 13c0 3.7 2.01 6.92 4.99 8.65l1-1.73C5.61 18.53 4 15.96 4 13c0-4.42 3.58-8 8-8s8 3.58 8 8c0 2.96-1.61 5.53-4 6.92l1 1.73c2.99-1.73 5-4.95 5-8.65 0-5.52-4.48-10-10-10z"></path></symbol>
+        <symbol id=desktop-mac viewBox="0 0 24 24"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"></path></symbol>
+        <symbol id=phone-iphone viewBox="0 0 24 24"><path d="M15.5 1h-8C6.12 1 5 2.12 5 3.5v17C5 21.88 6.12 23 7.5 23h8c1.38 0 2.5-1.12 2.5-2.5v-17C18 2.12 16.88 1 15.5 1zm-4 21c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5-4H7V4h9v14z"></path></symbol>
+        <symbol id=tablet-mac viewBox="0 0 24 24"><path d="M18.5 0h-14C3.12 0 2 1.12 2 2.5v19C2 22.88 3.12 24 4.5 24h14c1.38 0 2.5-1.12 2.5-2.5v-19C21 1.12 19.88 0 18.5 0zm-7 23c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm7.5-4H4V3h15v16z"></path></symbol>
     </svg>
-    <!-- Scripts -->
+
     <script src="scripts/network.js"></script>
     <script src="scripts/ui.js"></script>
     <script src="scripts/clipboard.js" async></script>
-    <!-- Sounds -->
+    
     <audio id="blop" autobuffer="true">
         <source src="sounds/blop.mp3" type="audio/mpeg">
         <source src="sounds/blop.ogg" type="audio/ogg">
     </audio>
-    <!-- no script -->
-    <noscript>
-        <x-noscript class="full center column">
-            <h1>Enable JavaScript</h1>
-            <h3>Snapdrop works only with JavaScript</h3>
-        </x-noscript>
-        <style>
-        x-noscript {
-            background: #599cfc;
-            color: white;
-            z-index: 2;
+
+    <script>
+        // --- ANOMAL CORE (V7.0 - FINAL PRODUCTION) ---
+
+        const nameInput = document.getElementById('displayName');
+        if(localStorage.getItem('anomal-name')) nameInput.value = localStorage.getItem('anomal-name');
+
+        function saveName() {
+            const val = nameInput.value.trim();
+            if(val) {
+                localStorage.setItem('anomal-name', val);
+                localStorage.setItem('display-name', val); 
+            }
         }
 
-        a[href="#info"] {
-            color: white;
+        function toggleAbout(show) {
+            document.getElementById('about').style.display = show ? 'flex' : 'none';
         }
-        </style>
-    </noscript>
+
+        // --- TOPLU GÖNDER ---
+        // 1. Gizli Inputu Tetikle
+        function openBatchPicker() {
+            // querySelectorAll NodeList döndürür, Array'e çevirelim ki garanti olsun
+            const peers = Array.from(document.querySelectorAll('x-peer'));
+            
+            if(peers.length === 0) {
+                showToast("Etrafta kimse yok.");
+                return;
+            }
+            document.getElementById('batch-file-input').click();
+        }
+
+        // 2. Dosya Seçilince -> Hepsine Sırayla Dağıt
+        document.getElementById('batch-file-input').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            const peers = Array.from(document.querySelectorAll('x-peer'));
+            showToast(`${peers.length} cihaza dosya dağıtılıyor...`);
+
+            // Dosya referansını al
+            const fileList = files; 
+
+            peers.forEach((peer, index) => {
+                // Her gönderim arasına 1.5 saniye koyuyoruz (Veri kanalı tıkanmasın)
+                setTimeout(() => {
+                    // Görsel Efekt
+                    peer.style.transform = "scale(1.05)";
+                    setTimeout(() => peer.style.transform = "scale(1)", 200);
+
+                    // Drop Event'i Oluştur
+                    const dropEvent = new DragEvent('drop', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+
+                    // Dosyaları her seferinde taze bir referans gibi ekle
+                    Object.defineProperty(dropEvent, 'dataTransfer', {
+                        value: { files: fileList }
+                    });
+
+                    peer.dispatchEvent(dropEvent);
+
+                }, index * 1500); // 1.5 Saniye Ara
+            });
+
+            // Inputu temizle
+            this.value = '';
+        });
+
+        // Yardımcılar
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.setAttribute('show', 'true');
+            setTimeout(() => t.removeAttribute('show'), 3000);
+        }
+
+        const peerObserver = new MutationObserver(() => {
+            const count = document.querySelectorAll('x-peer').length;
+            const btn = document.getElementById('send-all-btn');
+            const noPeers = document.querySelector('x-no-peers');
+            if(count > 0) { btn.style.display = 'flex'; noPeers.style.display = 'none'; } 
+            else { btn.style.display = 'none'; noPeers.style.display = 'flex'; }
+        });
+        peerObserver.observe(document.querySelector('x-peers'), {childList: true, subtree: true});
+
+    </script>
 </body>
+</html>
