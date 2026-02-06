@@ -81,7 +81,6 @@ class AnomalPeer {
         this.id = info.id;
         this.model = info.model;
         this.network = network;
-        // Google STUN sunucuları (Bağlantı kurmak için)
         this.pc = new RTCPeerConnection({ 
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -92,8 +91,6 @@ class AnomalPeer {
         this.fileBuffer = [];
         this.receivingFile = null;
         this.receivedSize = 0;
-        
-        // --- BEKLEME KUYRUĞU ---
         this.queuedFile = null; 
 
         this.pc.onicecandidate = (event) => {
@@ -102,7 +99,6 @@ class AnomalPeer {
 
         this.pc.ondatachannel = (event) => { this.setupChannel(event.channel); };
 
-        // Kanalı oluştur
         const channel = this.pc.createDataChannel('anomal-data');
         this.setupChannel(channel);
         
@@ -114,18 +110,16 @@ class AnomalPeer {
 
     setupChannel(channel) {
         this.channel = channel;
-        
-        // KANAL AÇILINCA YAPILACAKLAR
+        // KANAL İYİLEŞTİRMESİ: Büyük dosyalar için threshold ayarı
+        this.channel.bufferedAmountLowThreshold = 65535;
+
         this.channel.onopen = () => {
             console.log(`Kanal Açıldı: ${this.model} 🚀`);
-            // Eğer kuyrukta bekleyen dosya varsa GÖNDER!
             if (this.queuedFile) {
-                console.log("Kuyruktaki dosya gönderiliyor...");
                 this.send(this.queuedFile);
                 this.queuedFile = null;
             }
         };
-
         this.channel.onmessage = (e) => this.handleData(e.data);
     }
 
@@ -141,42 +135,53 @@ class AnomalPeer {
             } else if (data.type === 'candidate') {
                 await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
-        } catch(e) { console.error("Signal Hatası:", e); }
+        } catch(e) { console.error(e); }
     }
 
     send(file) {
-        // EĞER KANAL HAZIR DEĞİLSE KUYRUĞA AT
         if (this.channel.readyState !== 'open') {
-            console.log("Kanal henüz hazır değil, dosya kuyruğa alındı.");
             this.queuedFile = file;
-            // Kullanıcıya bilgi ver (Toast fonksiyonu global ise)
-            if(window.showToast) window.showToast("Bağlantı kuruluyor, bekle...");
+            if(window.showToast) window.showToast("Bağlantı bekleniyor...");
             return;
         }
 
         console.log("Gönderim başlıyor:", file.name);
 
-        // 1. Metadata
+        // Metadata gönder
         try {
             this.channel.send(JSON.stringify({ type: 'header', name: file.name, size: file.size, mime: file.type }));
         } catch(e) { console.error("Header Hatası:", e); return; }
 
-        // 2. Chunk Gönderimi (16KB - Daha güvenli boyut)
-        const chunkSize = 16 * 1024; 
+        // --- BÜYÜK DOSYA AYARI ---
+        const chunkSize = 16 * 1024; // 16KB (Güvenli Boyut)
+        // Kanalın boğulmaması için limit (64KB tampon)
+        const MAX_BUFFER_AMOUNT = 64 * 1024; 
+        
         const reader = new FileReader();
         let offset = 0;
 
         reader.onload = (e) => {
             if (this.channel.readyState !== 'open') return;
+            
             try {
                 this.channel.send(e.target.result);
                 offset += e.target.result.byteLength;
-                
-                // Gönderen taraf progress (Opsiyonel, şimdilik gerek yok)
 
                 if (offset < file.size) {
-                    // Tarayıcıyı kilitlememek için minik bir nefes aldır
-                    setTimeout(() => readSlice(offset), 0); 
+                    // --- KRİTİK NOKTA: BACKPRESSURE (GERİ BASINÇ) ---
+                    // Eğer kanalın ağzı çok doluysa (MAX_BUFFER_AMOUNT), bekle!
+                    if (this.channel.bufferedAmount > MAX_BUFFER_AMOUNT) {
+                        // Kanal boşalana kadar bekleme döngüsü
+                        const waitLoop = setInterval(() => {
+                            if (this.channel.bufferedAmount < MAX_BUFFER_AMOUNT) {
+                                clearInterval(waitLoop);
+                                readSlice(offset);
+                            }
+                        }, 5); // 5ms'de bir kontrol et
+                    } else {
+                        // Kanal müsait, yapıştır
+                        readSlice(offset);
+                    }
                 } else {
                     console.log("Gönderim bitti!");
                 }
@@ -203,14 +208,16 @@ class AnomalPeer {
                 window.dispatchEvent(new CustomEvent('file-incoming', { detail: { name: msg.name, size: msg.size } }));
             }
         } else {
-            // Binary Data
             if (!this.receivingFile) return;
 
             this.fileBuffer.push(data);
             this.receivedSize += data.byteLength;
 
             const percent = (this.receivedSize / this.receivingFile.size) * 100;
-            window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
+            // UI Kasmasın diye her %1'de bir güncelle
+            if (Math.floor(percent) % 1 === 0) {
+                window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
+            }
 
             if (this.receivedSize >= this.receivingFile.size) {
                 const blob = new Blob(this.fileBuffer, { type: this.receivingFile.mime });
