@@ -15,7 +15,7 @@ class AnomalNetwork {
     generateName() {
         let savedName = localStorage.getItem('anomal-name');
         if (savedName) return savedName;
-        const models = ['Node', 'Station', 'Ghost', 'Core', 'Unit', 'Operator'];
+        const models = ['Terminator', 'Tank', 'Dozer', 'Hammer', 'Anvil'];
         const randomModel = models[Math.floor(Math.random() * models.length)];
         const hex = Math.floor(Math.random() * 999);
         const newName = `Anomal ${randomModel} ${hex}`;
@@ -35,7 +35,7 @@ class AnomalNetwork {
         this.ws.onmessage = (event) => {
             try { const msg = JSON.parse(event.data); this.handleSignal(msg); } catch (e) { }
         };
-        this.ws.onclose = () => setTimeout(() => this.connect(address), 2000);
+        this.ws.onclose = () => setTimeout(() => this.connect(address), 1000);
     }
 
     sendSignal(type, data) {
@@ -69,10 +69,7 @@ class AnomalNetwork {
     }
 
     getDeviceType() {
-        const ua = navigator.userAgent;
-        if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'tablet';
-        if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated/.test(ua)) return 'mobile';
-        return 'desktop';
+        return /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
     }
 }
 
@@ -97,8 +94,13 @@ class AnomalPeer {
             if (event.candidate) this.network.sendSignal('signal', { to: this.id, data: { type: 'candidate', candidate: event.candidate } });
         };
 
-        this.pc.ondatachannel = (event) => { this.setupChannel(event.channel); };
+        // Eğer karşı taraf kanal açarsa burası tetiklenir
+        this.pc.ondatachannel = (event) => { 
+            console.log("Karşı taraf kanal açtı!");
+            this.setupChannel(event.channel); 
+        };
 
+        // Biz de kanal açmayı deniyoruz (Negotiation)
         const channel = this.pc.createDataChannel('anomal-data');
         this.setupChannel(channel);
         
@@ -109,15 +111,15 @@ class AnomalPeer {
     }
 
     setupChannel(channel) {
-        this.channel = channel;
-        // --- SENSO AYARI ---
-        // Kanal doluluk oranı 64KB'ın altına düşünce "Bana Haber Ver" diyoruz.
-        this.channel.bufferedAmountLowThreshold = 64 * 1024;
+        // Eğer zaten bir kanalımız varsa ve açıksa yenisini sallama
+        if (this.channel && this.channel.readyState === 'open') return;
 
+        this.channel = channel;
         this.channel.onopen = () => {
-            console.log(`Kanal Açıldı: ${this.model} 🚀`);
+            console.log(`Kanal BAĞLANDI: ${this.model} 🔥`);
+            // Kanal açıldığı an bekleyen malı yolla
             if (this.queuedFile) {
-                this.send(this.queuedFile);
+                this.sendFileData(this.queuedFile);
                 this.queuedFile = null;
             }
         };
@@ -139,63 +141,71 @@ class AnomalPeer {
         } catch(e) { console.error(e); }
     }
 
+    // --- DIŞARIDAN ÇAĞRILAN FONKSİYON ---
     send(file) {
-        if (this.channel.readyState !== 'open') {
+        if (!this.channel || this.channel.readyState !== 'open') {
+            console.log("Kanal kapalı, dosya sıraya alındı.");
             this.queuedFile = file;
             if(window.showToast) window.showToast("Bağlantı bekleniyor...");
             return;
         }
+        this.sendFileData(file);
+    }
 
-        console.log("Gönderim başlıyor:", file.name);
-
-        // Metadata
+    // --- ASIL GÖNDERİM MOTORU (KARA DÜZEN & GARANTİ) ---
+    sendFileData(file) {
+        console.log("Gönderim Başladı:", file.name);
+        
+        // 1. Metadata Yolla
         try {
             this.channel.send(JSON.stringify({ type: 'header', name: file.name, size: file.size, mime: file.type }));
-        } catch(e) { console.error("Header Hatası:", e); return; }
+        } catch(e) { 
+            console.error("Header Hatası:", e); 
+            if(window.showToast) window.showToast("Bağlantı hatası!");
+            return; 
+        }
 
-        const chunkSize = 16 * 1024; // 16KB Lokmalar
+        const chunkSize = 16 * 1024; // 16KB
         const reader = new FileReader();
         let offset = 0;
 
-        // Okuma ve Gönderme Fonksiyonu
-        const readSlice = () => {
+        reader.onload = (e) => {
+            const data = e.target.result;
+            
+            // --- LOOP FONKSİYONU ---
+            const pushData = () => {
+                // Kanal müsait mi?
+                if (this.channel.bufferedAmount > 16 * 1024 * 10) { // 160KB'dan fazla veri biriktiyse DUR
+                    setTimeout(pushData, 10); // 10ms sonra tekrar dene (Recursive Retry)
+                    return;
+                }
+
+                try {
+                    this.channel.send(data);
+                    offset += data.byteLength;
+
+                    // UI Güncelle (Hız testi için log açabilirsin)
+                    // const percent = (offset / file.size) * 100;
+
+                    if (offset < file.size) {
+                        readNextSlice(); // Sonraki dilimi oku
+                    } else {
+                        console.log("✅ Dosya Gönderimi Bitti!");
+                    }
+                } catch (err) {
+                    console.error("Veri gönderme hatası:", err);
+                }
+            };
+
+            pushData(); // İlk denemeyi yap
+        };
+
+        const readNextSlice = () => {
             const slice = file.slice(offset, offset + chunkSize);
             reader.readAsArrayBuffer(slice);
         };
 
-        reader.onload = (e) => {
-            if (this.channel.readyState !== 'open') return;
-            
-            try {
-                this.channel.send(e.target.result);
-                offset += e.target.result.byteLength;
-
-                if (offset < file.size) {
-                    // --- EN KRİTİK NOKTA: SENSÖR KONTROLÜ ---
-                    // Eğer kanalın ağzı çok doluysa (Threshold'u geçtiyse) DUR.
-                    if (this.channel.bufferedAmount > this.channel.bufferedAmountLowThreshold) {
-                        // Burada hiçbir şey yapmıyoruz, sadece duruyoruz.
-                        // Aşağıdaki 'onbufferedamountlow' eventi tetiklenince devam edecek.
-                    } else {
-                        // Kanal müsait, durmak yok yola devam
-                        readSlice();
-                    }
-                } else {
-                    console.log("Gönderim bitti!");
-                }
-            } catch(error) { console.error("Upload Hatası:", error); }
-        };
-
-        // --- SENSÖR: KANAL BOŞALINCA TETİKLENİR ---
-        this.channel.onbufferedamountlow = () => {
-            // Eğer gönderim bitmediyse kaldığı yerden devam et
-            if (offset < file.size) {
-                readSlice();
-            }
-        };
-
-        // İLK TETİKLEME
-        readSlice();
+        readNextSlice(); // Motoru ateşle
     }
 
     handleData(data) {
@@ -214,7 +224,7 @@ class AnomalPeer {
             this.receivedSize += data.byteLength;
 
             const percent = (this.receivedSize / this.receivingFile.size) * 100;
-            // UI Güncelleme (Her %1'de bir)
+            // %1'lik dilimlerde UI güncelle (Performans için)
             if (Math.floor(percent) % 1 === 0 || percent >= 100) {
                 window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
             }
