@@ -19,7 +19,7 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        /* --- ANOMAL PRO DESIGN SYSTEM (V8 - SECURE LOADER) --- */
+        /* --- ANOMAL PRO DESIGN SYSTEM (V11) --- */
         :root {
             --bg-body: #000000;
             --accent: #ff2d55;
@@ -127,6 +127,7 @@
             position: relative; overflow: hidden;
         }
 
+        /* --- NEON PROGRESS FOR PEER --- */
         x-peer .progress {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
             background: linear-gradient(to top, var(--accent), var(--accent-glow));
@@ -179,7 +180,7 @@
             box-shadow: 0 40px 80px rgba(0,0,0,0.8);
             border: 1px solid rgba(255,255,255,0.1);
             text-align: center; transform: scale(0.95); transition: transform 0.3s;
-            position: relative; overflow: hidden; /* Taşmayı önle */
+            position: relative; overflow: hidden;
         }
         x-dialog[show] x-paper { transform: scale(1); }
 
@@ -197,53 +198,27 @@
         .btn-primary { background: var(--accent); color: #fff; }
         .btn-secondary { background: rgba(255,255,255,0.1); }
         
-        /* --- YENİ EKLENEN: NEON PROGRESS BAR & KİLİT SİSTEMİ --- */
-        
         /* 1. Kilitli Buton Stili */
         .button.disabled {
-            background: #333;
-            color: #666;
-            cursor: not-allowed;
-            pointer-events: none;
-            box-shadow: none;
+            background: #333; color: #666; cursor: not-allowed; pointer-events: none; box-shadow: none;
         }
 
         /* 2. Neon Yükleme Çubuğu */
         .transfer-progress-track {
-            position: absolute;
-            bottom: 0; left: 0;
-            width: 100%;
-            height: 4px; /* İncelik */
-            background: rgba(255, 255, 255, 0.1);
-            z-index: 10;
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 4px;
+            background: rgba(255, 255, 255, 0.1); z-index: 10;
         }
 
         .transfer-progress-fill {
-            height: 100%;
-            width: 0%; /* JS ile artacak */
-            background: var(--accent);
-            box-shadow: 0 0 15px var(--accent), 0 0 30px var(--accent); /* Neon Parlama */
+            height: 100%; width: 0%; background: var(--accent);
+            box-shadow: 0 0 15px var(--accent), 0 0 30px var(--accent);
             transition: width 0.1s linear;
         }
 
-        /* 3. Yükleme Metni */
         #transferStatus {
-            font-size: 11px;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            font-weight: 700;
-            opacity: 0; /* Başta gizli */
-            transition: opacity 0.3s;
-        }
-        
-        /* ------------------------------------------------------- */
-
-        /* GÜVENLİK KİLİDİ (Eski animasyon yerine artık JS kontrolü kullanacağız ama dursun) */
-        @keyframes safety-unlock {
-            0% { opacity: 0.5; pointer-events: none; cursor: wait; }
-            100% { opacity: 1; pointer-events: auto; cursor: pointer; }
+            font-size: 11px; color: var(--accent); text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 5px; font-weight: 700;
+            opacity: 0; transition: opacity 0.3s;
         }
 
         .input-field { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; color: #fff; font-size: 15px; outline: none; margin-bottom: 24px; }
@@ -288,8 +263,7 @@
         </div>
     </header>
     
-    <x-peers>
-        </x-peers>
+    <x-peers></x-peers>
     
     <x-no-peers>
         <h2>Radar Aktif</h2>
@@ -300,7 +274,8 @@
 
     <x-dialog id="receiveDialog">
         <x-paper>
-            <h3>Dosya Alınıyor...</h3> <div id="transferStatus">BAĞLANTI KURULUYOR...</div>
+            <h3>Dosya Alınıyor...</h3>
+            <div id="transferStatus">BAĞLANTI KURULUYOR...</div>
 
             <div class="file-info">
                 <span id="fileName" class="file-highlight">Dosya</span><br>
@@ -316,7 +291,7 @@
             </div>
 
             <div class="btn-group">
-                <button class="button btn-secondary" close>Reddet</button>
+                <button class="button btn-secondary" close onclick="closeDialog('receiveDialog')">Reddet</button>
                 <a class="button btn-primary disabled" id="download">Bekleyiniz...</a>
             </div>
         </x-paper>
@@ -384,7 +359,7 @@
     </audio>
 
     <script>
-        // --- ANOMAL CORE (V7.0 FIX) ---
+        // --- ANOMAL CORE (V11 - FINAL PRODUCTION) ---
 
         const nameInput = document.getElementById('displayName');
         if(localStorage.getItem('anomal-name')) nameInput.value = localStorage.getItem('anomal-name');
@@ -401,9 +376,12 @@
             document.getElementById('about').style.display = show ? 'flex' : 'none';
         }
 
+        function closeDialog(id) {
+            document.getElementById(id).removeAttribute('show');
+        }
+
         // --- TOPLU GÖNDER ---
         function openBatchPicker() {
-            // Düzeltme: window.anomalPeers kontrolü
             if(!window.anomalPeers || Object.keys(window.anomalPeers).length === 0) {
                 showToast("Etrafta kimse yok.");
                 return;
@@ -414,31 +392,31 @@
         document.getElementById('batch-file-input').addEventListener('change', function(e) {
             const files = e.target.files;
             if (files.length === 0) return;
-
-            // Düzeltme: Doğrudan network.js peer listesini kullan
-            // (Bu kısım network.js güncellendiğinde tam çalışacak)
-            const peers = window.anomalPeers ? Object.values(window.anomalPeers) : [];
             
+            const peers = window.anomalPeers ? Object.values(window.anomalPeers) : [];
             showToast(`${peers.length} cihaza dosya dağıtılıyor...`);
 
-            // Dosya referansını al
             const file = files[0]; 
 
             peers.forEach((peer, index) => {
                 setTimeout(() => {
-                    // UI Efekti
-                    const uiPeer = document.querySelector(`x-peer`); // İyileştirilebilir
+                    // UI Efekti (Hangi cihaza gittiğini göster)
+                    const uiPeer = document.querySelector(`#peer-${peer.id}`);
                     if(uiPeer) {
-                        uiPeer.style.transform = "scale(1.05)";
-                        setTimeout(() => uiPeer.style.transform = "scale(1)", 200);
+                        uiPeer.style.transform = "scale(1.15)";
+                        uiPeer.style.boxShadow = "0 0 20px var(--accent)";
+                        setTimeout(() => {
+                            uiPeer.style.transform = "scale(1)";
+                            uiPeer.style.boxShadow = "none";
+                        }, 300);
                     }
 
-                    // KRİTİK: Doğrudan gönderme fonksiyonu
+                    // Network.js içindeki send fonksiyonunu kullan
                     if(peer.send) {
                         peer.send(file);
                     }
 
-                }, index * 1500); 
+                }, index * 1500); // 1.5 saniye ara ile gönder (Cihazı yormamak için)
             });
 
             this.value = '';
@@ -450,6 +428,13 @@
             t.setAttribute('show', 'true');
             setTimeout(() => t.removeAttribute('show'), 3000);
         }
+
+        // BUTONLARI AKTİF ET (CLOSE attribute olanlar)
+        document.querySelectorAll('[close]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('x-dialog').forEach(d => d.removeAttribute('show'));
+            });
+        });
 
         const peerObserver = new MutationObserver(() => {
             const count = document.querySelectorAll('x-peer').length;
