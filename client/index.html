@@ -19,7 +19,7 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        /* --- ANOMAL PRO DESIGN SYSTEM (FINAL v7) --- */
+        /* --- ANOMAL PRO DESIGN SYSTEM (V8 - SECURE LOADER) --- */
         :root {
             --bg-body: #000000;
             --accent: #ff2d55;
@@ -127,7 +127,6 @@
             position: relative; overflow: hidden;
         }
 
-        /* --- RED FILL EFFECT (Lava Progress) --- */
         x-peer .progress {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
             background: linear-gradient(to top, var(--accent), var(--accent-glow));
@@ -135,7 +134,6 @@
             mix-blend-mode: overlay;
         }
         
-        /* Orijinal SVG progress'i gizliyoruz */
         x-peer circle { display: none; } 
         x-peer svg.progress-ring { display: none; }
 
@@ -181,14 +179,15 @@
             box-shadow: 0 40px 80px rgba(0,0,0,0.8);
             border: 1px solid rgba(255,255,255,0.1);
             text-align: center; transform: scale(0.95); transition: transform 0.3s;
+            position: relative; overflow: hidden; /* Taşmayı önle */
         }
         x-dialog[show] x-paper { transform: scale(1); }
 
         h3 { margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #fff; }
-        .file-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
+        .file-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; line-height: 1.4; position: relative; z-index: 2; }
         .file-highlight { color: #fff; font-weight: 600; }
 
-        .btn-group { display: flex; gap: 12px; margin-top: 15px; }
+        .btn-group { display: flex; gap: 12px; margin-top: 15px; position: relative; z-index: 2; }
         
         .button {
             flex: 1; padding: 14px 0; border-radius: 14px; font-size: 14px; font-weight: 600;
@@ -198,16 +197,53 @@
         .btn-primary { background: var(--accent); color: #fff; }
         .btn-secondary { background: rgba(255,255,255,0.1); }
         
-        /* GÜVENLİK KİLİDİ (SAFE MODE) - CSS TABANLI */
-        @keyframes safety-unlock {
-            0% { opacity: 0.5; pointer-events: none; cursor: wait; }
-            99% { opacity: 0.5; pointer-events: none; cursor: wait; }
-            100% { opacity: 1; pointer-events: auto; cursor: pointer; }
+        /* --- YENİ EKLENEN: NEON PROGRESS BAR & KİLİT SİSTEMİ --- */
+        
+        /* 1. Kilitli Buton Stili */
+        .button.disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
         }
 
-        /* Dialog açıldığında buton 1.5 saniye kilitlenir */
-        x-dialog[show] #download {
-            animation: safety-unlock 1.5s linear forwards;
+        /* 2. Neon Yükleme Çubuğu */
+        .transfer-progress-track {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%;
+            height: 4px; /* İncelik */
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+
+        .transfer-progress-fill {
+            height: 100%;
+            width: 0%; /* JS ile artacak */
+            background: var(--accent);
+            box-shadow: 0 0 15px var(--accent), 0 0 30px var(--accent); /* Neon Parlama */
+            transition: width 0.1s linear;
+        }
+
+        /* 3. Yükleme Metni */
+        #transferStatus {
+            font-size: 11px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            font-weight: 700;
+            opacity: 0; /* Başta gizli */
+            transition: opacity 0.3s;
+        }
+        
+        /* ------------------------------------------------------- */
+
+        /* GÜVENLİK KİLİDİ (Eski animasyon yerine artık JS kontrolü kullanacağız ama dursun) */
+        @keyframes safety-unlock {
+            0% { opacity: 0.5; pointer-events: none; cursor: wait; }
+            100% { opacity: 1; pointer-events: auto; cursor: pointer; }
         }
 
         .input-field { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; color: #fff; font-size: 15px; outline: none; margin-bottom: 24px; }
@@ -264,17 +300,24 @@
 
     <x-dialog id="receiveDialog">
         <x-paper>
-            <h3>Dosya Alındı</h3>
+            <h3>Dosya Alınıyor...</h3> <div id="transferStatus">BAĞLANTI KURULUYOR...</div>
+
             <div class="file-info">
                 <span id="fileName" class="file-highlight">Dosya</span><br>
                 <span id="fileSize">Boyut</span>
             </div>
+            
             <div class='preview' style="visibility: hidden; margin-bottom:20px; border-radius:12px; overflow:hidden; max-height:150px;">
                 <img id='img-preview' src="" style="width:100%; object-fit: cover;">
             </div>
+
+            <div class="transfer-progress-track">
+                <div class="transfer-progress-fill" id="transferFill"></div>
+            </div>
+
             <div class="btn-group">
                 <button class="button btn-secondary" close>Reddet</button>
-                <a class="button btn-primary" close id="download">Kabul Et</a>
+                <a class="button btn-primary disabled" id="download">Bekleyiniz...</a>
             </div>
         </x-paper>
     </x-dialog>
@@ -341,7 +384,7 @@
     </audio>
 
     <script>
-        // --- ANOMAL CORE (V7.0 - FINAL PRODUCTION) ---
+        // --- ANOMAL CORE (V7.0 FIX) ---
 
         const nameInput = document.getElementById('displayName');
         if(localStorage.getItem('anomal-name')) nameInput.value = localStorage.getItem('anomal-name');
@@ -359,58 +402,48 @@
         }
 
         // --- TOPLU GÖNDER ---
-        // 1. Gizli Inputu Tetikle
         function openBatchPicker() {
-            // querySelectorAll NodeList döndürür, Array'e çevirelim ki garanti olsun
-            const peers = Array.from(document.querySelectorAll('x-peer'));
-            
-            if(peers.length === 0) {
+            // Düzeltme: window.anomalPeers kontrolü
+            if(!window.anomalPeers || Object.keys(window.anomalPeers).length === 0) {
                 showToast("Etrafta kimse yok.");
                 return;
             }
             document.getElementById('batch-file-input').click();
         }
 
-        // 2. Dosya Seçilince -> Hepsine Sırayla Dağıt
         document.getElementById('batch-file-input').addEventListener('change', function(e) {
             const files = e.target.files;
             if (files.length === 0) return;
 
-            const peers = Array.from(document.querySelectorAll('x-peer'));
+            // Düzeltme: Doğrudan network.js peer listesini kullan
+            // (Bu kısım network.js güncellendiğinde tam çalışacak)
+            const peers = window.anomalPeers ? Object.values(window.anomalPeers) : [];
+            
             showToast(`${peers.length} cihaza dosya dağıtılıyor...`);
 
             // Dosya referansını al
-            const fileList = files; 
+            const file = files[0]; 
 
             peers.forEach((peer, index) => {
-                // Her gönderim arasına 1.5 saniye koyuyoruz (Veri kanalı tıkanmasın)
                 setTimeout(() => {
-                    // Görsel Efekt
-                    peer.style.transform = "scale(1.05)";
-                    setTimeout(() => peer.style.transform = "scale(1)", 200);
+                    // UI Efekti
+                    const uiPeer = document.querySelector(`x-peer`); // İyileştirilebilir
+                    if(uiPeer) {
+                        uiPeer.style.transform = "scale(1.05)";
+                        setTimeout(() => uiPeer.style.transform = "scale(1)", 200);
+                    }
 
-                    // Drop Event'i Oluştur
-                    const dropEvent = new DragEvent('drop', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    });
+                    // KRİTİK: Doğrudan gönderme fonksiyonu
+                    if(peer.send) {
+                        peer.send(file);
+                    }
 
-                    // Dosyaları her seferinde taze bir referans gibi ekle
-                    Object.defineProperty(dropEvent, 'dataTransfer', {
-                        value: { files: fileList }
-                    });
-
-                    peer.dispatchEvent(dropEvent);
-
-                }, index * 1500); // 1.5 Saniye Ara
+                }, index * 1500); 
             });
 
-            // Inputu temizle
             this.value = '';
         });
 
-        // Yardımcılar
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.textContent = msg;
