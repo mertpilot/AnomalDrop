@@ -5,7 +5,6 @@ class AnomalNetwork {
         this.deviceName = this.generateName();
         this.peers = {};
         
-        // --- ARKA KAPI (Toplu Gönderim İçin) ---
         window.anomalPeers = this.peers;
 
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -27,14 +26,14 @@ class AnomalNetwork {
     connect(address) {
         this.ws = new WebSocket(address);
         this.ws.onopen = () => {
-            console.log("AnomalNetwork: Sunucuya Bağlandı! ✅");
+            console.log("Sunucuya Bağlandı ✅");
             this.sendSignal('join', {
                 sender: this.myId,
                 device: { model: this.deviceName, type: this.getDeviceType() }
             });
         };
         this.ws.onmessage = (event) => {
-            try { const msg = JSON.parse(event.data); this.handleSignal(msg); } catch (e) { console.error(e); }
+            try { const msg = JSON.parse(event.data); this.handleSignal(msg); } catch (e) { }
         };
         this.ws.onclose = () => setTimeout(() => this.connect(address), 2000);
     }
@@ -82,12 +81,20 @@ class AnomalPeer {
         this.id = info.id;
         this.model = info.model;
         this.network = network;
-        this.pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        // Google STUN sunucuları (Bağlantı kurmak için)
+        this.pc = new RTCPeerConnection({ 
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ] 
+        });
         this.channel = null;
         this.fileBuffer = [];
-        this.fileSize = 0;
-        this.receivedSize = 0;
         this.receivingFile = null;
+        this.receivedSize = 0;
+        
+        // --- BEKLEME KUYRUĞU ---
+        this.queuedFile = null; 
 
         this.pc.onicecandidate = (event) => {
             if (event.candidate) this.network.sendSignal('signal', { to: this.id, data: { type: 'candidate', candidate: event.candidate } });
@@ -95,8 +102,9 @@ class AnomalPeer {
 
         this.pc.ondatachannel = (event) => { this.setupChannel(event.channel); };
 
-        this.channel = this.pc.createDataChannel('anomal-data');
-        this.setupChannel(this.channel);
+        // Kanalı oluştur
+        const channel = this.pc.createDataChannel('anomal-data');
+        this.setupChannel(channel);
         
         this.pc.createOffer().then(desc => {
             this.pc.setLocalDescription(desc);
@@ -106,40 +114,74 @@ class AnomalPeer {
 
     setupChannel(channel) {
         this.channel = channel;
-        this.channel.onopen = () => console.log(`Kanal Açık: ${this.model}`);
+        
+        // KANAL AÇILINCA YAPILACAKLAR
+        this.channel.onopen = () => {
+            console.log(`Kanal Açıldı: ${this.model} 🚀`);
+            // Eğer kuyrukta bekleyen dosya varsa GÖNDER!
+            if (this.queuedFile) {
+                console.log("Kuyruktaki dosya gönderiliyor...");
+                this.send(this.queuedFile);
+                this.queuedFile = null;
+            }
+        };
+
         this.channel.onmessage = (e) => this.handleData(e.data);
     }
 
     async handleSignal(data) {
-        if (data.type === 'offer') {
-            await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            const answer = await this.pc.createAnswer();
-            await this.pc.setLocalDescription(answer);
-            this.network.sendSignal('signal', { to: this.id, data: { type: 'answer', sdp: answer } });
-        } else if (data.type === 'answer') {
-            await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        } else if (data.type === 'candidate') {
-            await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
+        try {
+            if (data.type === 'offer') {
+                await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                const answer = await this.pc.createAnswer();
+                await this.pc.setLocalDescription(answer);
+                this.network.sendSignal('signal', { to: this.id, data: { type: 'answer', sdp: answer } });
+            } else if (data.type === 'answer') {
+                await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            } else if (data.type === 'candidate') {
+                await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        } catch(e) { console.error("Signal Hatası:", e); }
     }
 
     send(file) {
-        if (this.channel.readyState !== 'open') return;
+        // EĞER KANAL HAZIR DEĞİLSE KUYRUĞA AT
+        if (this.channel.readyState !== 'open') {
+            console.log("Kanal henüz hazır değil, dosya kuyruğa alındı.");
+            this.queuedFile = file;
+            // Kullanıcıya bilgi ver (Toast fonksiyonu global ise)
+            if(window.showToast) window.showToast("Bağlantı kuruluyor, bekle...");
+            return;
+        }
 
-        // 1. Metadata Gönder
-        this.channel.send(JSON.stringify({ type: 'header', name: file.name, size: file.size, mime: file.type }));
+        console.log("Gönderim başlıyor:", file.name);
 
-        // 2. Chunk Gönderimi (64KB Dilimler)
-        const chunkSize = 64 * 1024; 
+        // 1. Metadata
+        try {
+            this.channel.send(JSON.stringify({ type: 'header', name: file.name, size: file.size, mime: file.type }));
+        } catch(e) { console.error("Header Hatası:", e); return; }
+
+        // 2. Chunk Gönderimi (16KB - Daha güvenli boyut)
+        const chunkSize = 16 * 1024; 
         const reader = new FileReader();
         let offset = 0;
 
         reader.onload = (e) => {
-            this.channel.send(e.target.result);
-            offset += e.target.result.byteLength;
+            if (this.channel.readyState !== 'open') return;
+            try {
+                this.channel.send(e.target.result);
+                offset += e.target.result.byteLength;
+                
+                // Gönderen taraf progress (Opsiyonel, şimdilik gerek yok)
 
-            if (offset < file.size) {
-                readSlice(offset);
+                if (offset < file.size) {
+                    // Tarayıcıyı kilitlememek için minik bir nefes aldır
+                    setTimeout(() => readSlice(offset), 0); 
+                } else {
+                    console.log("Gönderim bitti!");
+                }
+            } catch(error) {
+                console.error("Upload Hatası:", error);
             }
         };
 
@@ -158,24 +200,20 @@ class AnomalPeer {
                 this.receivingFile = msg;
                 this.fileBuffer = [];
                 this.receivedSize = 0;
-                // UI: Dialog Aç (KİLİTLİ)
                 window.dispatchEvent(new CustomEvent('file-incoming', { detail: { name: msg.name, size: msg.size } }));
             }
         } else {
-            // Binary Data Geliyor
+            // Binary Data
+            if (!this.receivingFile) return;
+
             this.fileBuffer.push(data);
             this.receivedSize += data.byteLength;
 
-            // UI: Neon Barı Doldur
-            if (this.receivingFile) {
-                const percent = (this.receivedSize / this.receivingFile.size) * 100;
-                window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
-            }
+            const percent = (this.receivedSize / this.receivingFile.size) * 100;
+            window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
 
-            // Dosya Bitti
             if (this.receivedSize >= this.receivingFile.size) {
                 const blob = new Blob(this.fileBuffer, { type: this.receivingFile.mime });
-                // UI: Kilidi Aç
                 window.dispatchEvent(new CustomEvent('file-ready', { 
                     detail: { blob: blob, name: this.receivingFile.name } 
                 }));
