@@ -110,8 +110,9 @@ class AnomalPeer {
 
     setupChannel(channel) {
         this.channel = channel;
-        // KANAL İYİLEŞTİRMESİ: Büyük dosyalar için threshold ayarı
-        this.channel.bufferedAmountLowThreshold = 65535;
+        // --- SENSO AYARI ---
+        // Kanal doluluk oranı 64KB'ın altına düşünce "Bana Haber Ver" diyoruz.
+        this.channel.bufferedAmountLowThreshold = 64 * 1024;
 
         this.channel.onopen = () => {
             console.log(`Kanal Açıldı: ${this.model} 🚀`);
@@ -147,18 +148,20 @@ class AnomalPeer {
 
         console.log("Gönderim başlıyor:", file.name);
 
-        // Metadata gönder
+        // Metadata
         try {
             this.channel.send(JSON.stringify({ type: 'header', name: file.name, size: file.size, mime: file.type }));
         } catch(e) { console.error("Header Hatası:", e); return; }
 
-        // --- BÜYÜK DOSYA AYARI ---
-        const chunkSize = 16 * 1024; // 16KB (Güvenli Boyut)
-        // Kanalın boğulmaması için limit (64KB tampon)
-        const MAX_BUFFER_AMOUNT = 64 * 1024; 
-        
+        const chunkSize = 16 * 1024; // 16KB Lokmalar
         const reader = new FileReader();
         let offset = 0;
+
+        // Okuma ve Gönderme Fonksiyonu
+        const readSlice = () => {
+            const slice = file.slice(offset, offset + chunkSize);
+            reader.readAsArrayBuffer(slice);
+        };
 
         reader.onload = (e) => {
             if (this.channel.readyState !== 'open') return;
@@ -168,34 +171,31 @@ class AnomalPeer {
                 offset += e.target.result.byteLength;
 
                 if (offset < file.size) {
-                    // --- KRİTİK NOKTA: BACKPRESSURE (GERİ BASINÇ) ---
-                    // Eğer kanalın ağzı çok doluysa (MAX_BUFFER_AMOUNT), bekle!
-                    if (this.channel.bufferedAmount > MAX_BUFFER_AMOUNT) {
-                        // Kanal boşalana kadar bekleme döngüsü
-                        const waitLoop = setInterval(() => {
-                            if (this.channel.bufferedAmount < MAX_BUFFER_AMOUNT) {
-                                clearInterval(waitLoop);
-                                readSlice(offset);
-                            }
-                        }, 5); // 5ms'de bir kontrol et
+                    // --- EN KRİTİK NOKTA: SENSÖR KONTROLÜ ---
+                    // Eğer kanalın ağzı çok doluysa (Threshold'u geçtiyse) DUR.
+                    if (this.channel.bufferedAmount > this.channel.bufferedAmountLowThreshold) {
+                        // Burada hiçbir şey yapmıyoruz, sadece duruyoruz.
+                        // Aşağıdaki 'onbufferedamountlow' eventi tetiklenince devam edecek.
                     } else {
-                        // Kanal müsait, yapıştır
-                        readSlice(offset);
+                        // Kanal müsait, durmak yok yola devam
+                        readSlice();
                     }
                 } else {
                     console.log("Gönderim bitti!");
                 }
-            } catch(error) {
-                console.error("Upload Hatası:", error);
+            } catch(error) { console.error("Upload Hatası:", error); }
+        };
+
+        // --- SENSÖR: KANAL BOŞALINCA TETİKLENİR ---
+        this.channel.onbufferedamountlow = () => {
+            // Eğer gönderim bitmediyse kaldığı yerden devam et
+            if (offset < file.size) {
+                readSlice();
             }
         };
 
-        const readSlice = (o) => {
-            const slice = file.slice(o, o + chunkSize);
-            reader.readAsArrayBuffer(slice);
-        };
-
-        readSlice(0);
+        // İLK TETİKLEME
+        readSlice();
     }
 
     handleData(data) {
@@ -214,8 +214,8 @@ class AnomalPeer {
             this.receivedSize += data.byteLength;
 
             const percent = (this.receivedSize / this.receivingFile.size) * 100;
-            // UI Kasmasın diye her %1'de bir güncelle
-            if (Math.floor(percent) % 1 === 0) {
+            // UI Güncelleme (Her %1'de bir)
+            if (Math.floor(percent) % 1 === 0 || percent >= 100) {
                 window.dispatchEvent(new CustomEvent('file-progress', { detail: percent }));
             }
 
